@@ -15,7 +15,7 @@ def main(name):
     atlas = setup(name, 500, 800)
     print(atlas)
 
-    init_points(atlas, 1000)  # Atlas and number of points to generate
+    init_points(atlas, 2000)  # Atlas and number of points to generate
 
     # relax points using lloyd's algorithm, rescale at each stage
     relax_rescale_n(atlas, 6)
@@ -75,7 +75,7 @@ def init_points(atlas, num_points):
 def relax_rescale_n(atlas, n):
 
     for i in range(n):
-        print(f"Relaxation iteration {n}")
+        print(f"Relaxation iteration {i}")
         relax_points(atlas)
         rescale_points(atlas)
 
@@ -161,9 +161,10 @@ def show_tricontour_plot(atlas):
 
     fig, ax = plt.subplots()
 
-    ax.tricontour(tri, atlas.elevs)
+    ax.tricontourf(tri, atlas.elevs)
+    ax.tricontour(tri, atlas.elevs, colors="black", linewidths=0.5)
 
-    ax.triplot(tri, color="0.7")
+    ax.triplot(tri, color="0.7", linewidth=0.5, alpha=0.5)
 
     plt.show()
     input("PRESS ENTER TO CLOSE PLOT")
