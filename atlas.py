@@ -26,8 +26,8 @@ class Atlas:
         self.vor = None
         self.tri = None
         self.elevs = []
-        self.precip = []
-        self.flow = []
+        self.precips = []
+        self.flows = []
 
     def write(self):
         map_dict = {
@@ -70,7 +70,12 @@ class Atlas:
 
         neigh_elevs = [self.elevs[i] for i in neighbors]
 
-        return neighbors[np.argmin(neigh_elevs)]
+        min_neigh = neighbors[np.argmin(neigh_elevs)]
+
+        if self.elevs[min_neigh] >= self.elevs[point_index]:
+            return None
+        else:
+            return min_neigh
 
     def dist_2d(self, idx1, idx2):
         p1 = self.points[idx1]
