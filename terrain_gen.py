@@ -44,7 +44,7 @@ def main(name):
 
     bounded_quad(atlas, 250, 400, 0, 200, -0.05, 0, 200)
 
-    calculate_flows(atlas)
+    atlas.calculate_all()
 
     flow_erosion(atlas, 100)
 
@@ -124,8 +124,8 @@ def init_hydro(atlas):
     atlas.flows = [0 for x in atlas.points]
 
 
-# Terrain Functions
 
+# Terrain deformation functions
 def bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
 
     for i, point in enumerate(atlas.points):
@@ -147,25 +147,6 @@ def simple_smooth(atlas, smooth_factor):
         dzs.append(dz)
 
     atlas.elevs = [elev + dzs[i] for i, elev in enumerate(atlas.elevs)]
-
-
-def calculate_flows(atlas):
-
-    for i in range(len(atlas.points)):
-        precip = atlas.precips[i]
-        atlas.flows[i] += precip
-        flag = True
-        next_point = i
-
-        while flag:
-            next_point = atlas.get_min_neighbor(next_point)
-            if not next_point:
-                flag = False
-                break
-            if atlas.elevs[next_point] <= atlas.sea_level:
-                flag = False
-                break
-            atlas.flows[next_point] += precip
 
 
 def flow_erosion(atlas, erosion_factor):

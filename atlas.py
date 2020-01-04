@@ -10,11 +10,11 @@ import util
 
 class Atlas:
     '''
-    Base class to store map data.
-    Does not change data, only stores it and handles saving/loading/initilization
+    Base class to represent a steady-state map.
     '''
 
     def __init__(self, name, height, width):
+        # Structural variables
         self.name = name
         self.height = height
         self.width = width
@@ -25,9 +25,13 @@ class Atlas:
         self.regions = None
         self.vor = None
         self.tri = None
+        # Deformable Variables
         self.elevs = []
         self.precips = []
+        # Calculated Variables
         self.flows = []
+        self.flow_vs = []
+        self.silt = []
 
     def write(self):
         map_dict = {
@@ -81,6 +85,41 @@ class Atlas:
         p1 = self.points[idx1]
         p2 = self.points[idx2]
         return util.dist_2d(p1[0], p1[1], p2[0], p2[1])
+
+    def calculate_all(self):
+        self.calculate_flow_amounts()
+        self.calculate_flow_velocities()
+
+    def calculate_flow_amounts(self):
+
+        for i in range(len(self.points)):
+            precip = self.precips[i]
+            self.flows[i] += precip
+            flag = True
+            next_point = i
+
+            while flag:
+                next_point = self.get_min_neighbor(next_point)
+                if not next_point:
+                    flag = False
+                    break
+                if self.elevs[next_point] <= self.sea_level:
+                    flag = False
+                    break
+                self.flows[next_point] += precip
+
+    def calculate_flow_velocities(self):
+
+        self.flow_vs = [0 for x in self.points]
+
+        for i in range(len(self.flow_vs)):
+
+            downhill = self.get_min_neighbor(i)
+
+            if downhill:
+                self.flow_vs[i] = self.elevs[i] - self.elevs[downhill]
+            else:
+                self.flow_vs[i] = 0
 
     def __repr__(self):
         return f"<Atlas - Name: {self.name}, Height: {self.height}, Width: {self.width}>"
