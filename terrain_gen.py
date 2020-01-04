@@ -37,6 +37,9 @@ def main(name):
     # initialize elevations
     init_elevations(atlas)
 
+    # initialize precip and flow
+    init_hydro(atlas)
+
     # terrain deformations
 
     bounded_quad(atlas, 250, 400, 0, 200, -0.05, 0, 200)
@@ -111,6 +114,12 @@ def init_elevations(atlas):
     atlas.elevs = [0 for i in atlas.points]
 
 
+def init_hydro(atlas):
+
+    atlas.precip = [0.2 for x in atlas.points]
+    atlas.flow = [0 for x in atlas.points]
+
+
 # Terrain Functions
 
 def bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
@@ -134,6 +143,18 @@ def simple_smooth(atlas, smooth_factor):
         dzs.append(dz)
 
     atlas.elevs = [elev + dzs[i] for i, elev in enumerate(atlas.elevs)]
+
+
+# Utility Functions
+def get_mask(atlas):
+    return [True for x in atlas.points]
+
+
+def apply_delta_z_with_mask(atlas, dz, mask):
+
+    for i, elev in enumerate(atlas.elevs):
+        if mask[i]:
+            atlas.elevs[i] += dz[i]
 
 
 # Display Functions

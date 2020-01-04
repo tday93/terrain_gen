@@ -2,9 +2,9 @@
 
 import json
 import numpy as np
+from scipy.spatial import Delaunay
 
 from lloyd import Field
-from scipy.spatial import Delaunay
 import util
 
 
@@ -18,11 +18,16 @@ class Atlas:
         self.name = name
         self.height = height
         self.width = width
+        self.sea_level = 0
+        self.floor = -1000
+        self.ceiling = 2000
         self.points = []
         self.regions = None
         self.vor = None
         self.tri = None
         self.elevs = []
+        self.precip = []
+        self.flow = []
 
     def write(self):
         map_dict = {
@@ -59,6 +64,13 @@ class Atlas:
         indices, indptr = self.tri.vertex_neighbor_vertices
 
         return indptr[indices[point_index]:indices[point_index + 1]]
+
+    def get_min_neighbor(self, point_index):
+        neighbors = self.get_point_neighbors(point_index)
+
+        neigh_elevs = [self.elevs[i] for i in neighbors]
+
+        return neighbors[np.argmin(neigh_elevs)]
 
     def dist_2d(self, idx1, idx2):
         p1 = self.points[idx1]
