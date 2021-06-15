@@ -9,8 +9,13 @@ from lloyd import Field
 from atlas import Atlas
 import util
 
+#%%
 
 def main(name):
+
+    ###############
+    # Basic Setup #
+    ###############
 
     atlas = setup(name, 500, 800)
     print(atlas)
@@ -40,21 +45,34 @@ def main(name):
     # initialize precip and flow
     init_hydro(atlas)
 
-    # terrain deformations
+    ########################
+    # Terrain Deformations #
+    ########################
 
+    #flat_locus(atlas, x0, y0, r, z):
+    flat_locus(atlas, 250, 400, 100, 100)
+
+    # bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
     bounded_quad(atlas, 250, 400, 0, 200, -0.05, 0, 200)
+
+    show_tricontour_plot(atlas, name="Basic Deformations")
+    plt.close('all')
 
     atlas.calculate_all()
 
     flow_erosion(atlas, 100)
+    atlas.calculate_all()
+    flow_erosion(atlas, 100)
+    atlas.calculate_all()
+    flow_erosion(atlas, 100)
 
     # show final plot
-    show_tricontour_plot(atlas)
+    show_tricontour_plot(atlas, name="Post Erosion, Pre-Smoothing")
     plt.close('all')
 
     simple_smooth(atlas, 0.5)
 
-    show_tricontour_plot(atlas)
+    show_tricontour_plot(atlas, name="Post-Smoothing")
     plt.close('all')
 
 
@@ -136,6 +154,16 @@ def bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
         atlas.elevs[i] += dz
 
 
+def flat_locus(atlas, x0, y0, r, z):
+
+    for i, point in enumerate(atlas.points):
+        dz = 0
+        n = util.dist_2d(x0, y0, point[0], point[1])
+        if (n <= r):
+            dz = z
+        atlas.elevs[i] += dz
+
+
 def simple_smooth(atlas, smooth_factor):
 
     dzs = []
@@ -151,17 +179,25 @@ def simple_smooth(atlas, smooth_factor):
 
 def flow_erosion(atlas, erosion_factor):
 
+    mask = get_sea_level_mask(atlas)
     dzs = []
     for i, flow in enumerate(atlas.flows):
-        dz = -(flow * erosion_factor)
+        if (atlas.get_min_neighbor(i) is None):
+            dz = flow * 50
+        else:
+            dz = -(flow * erosion_factor)
         dzs.append(dz)
 
-    apply_delta_z_with_mask(atlas, dzs, get_mask(atlas))
+    apply_delta_z_with_mask(atlas, dzs, mask)
 
 
 # Utility Functions
 def get_mask(atlas):
     return [True for x in atlas.points]
+
+def get_sea_level_mask(atlas):
+    return [True if atlas.elevs[i] > atlas.sea_level else False for i, point in enumerate(atlas.points)]
+
 
 
 def apply_delta_z_with_mask(atlas, dz, mask):
@@ -179,7 +215,7 @@ def show_tri_plot(atlas):
     plt.triplot(points[:, 0], points[:, 1], tri.simplices)
     plt.plot(points[:, 0], points[:, 1], 'o')
     plt.show()
-    input("PRESS ENTER TO CLOSE PLOT")
+    input("Press enter for next plot")
 
 
 def show_vor_plot(atlas):
@@ -187,10 +223,10 @@ def show_vor_plot(atlas):
     field = Field(points=np.array(atlas.points))
     plot = voronoi_plot_2d(field.voronoi, show_vertices=False, line_colors='orange', line_width=2, line_alpha=0.6, point_size=2)
     plot.show()
-    input("PRESS ENTER TO CLOSE PLOT")
+    input("Press enter for next plot")
 
 
-def show_tricontour_plot(atlas):
+def show_tricontour_plot(atlas, name="Default Name"):
 
     tri = Triangulation(atlas.points[:, 0], atlas.points[:, 1])
 
@@ -201,8 +237,10 @@ def show_tricontour_plot(atlas):
 
     ax.triplot(tri, color="0.7", linewidth=0.5, alpha=0.5)
 
+    fig.canvas.manager.set_window_title(name)
+
     plt.show()
-    input("PRESS ENTER TO CLOSE PLOT")
+    input("Press enter for next plot")
 
 
 if __name__ == "__main__":
