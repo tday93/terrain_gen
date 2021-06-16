@@ -9,7 +9,6 @@ from lloyd import Field
 from atlas import Atlas
 import util
 
-#%%
 
 def main(name):
 
@@ -17,6 +16,7 @@ def main(name):
     # Basic Setup #
     ###############
 
+    # setup(name, height, width)
     atlas = setup(name, 500, 800)
     print(atlas)
 
@@ -49,22 +49,36 @@ def main(name):
     # Terrain Deformations #
     ########################
 
-    #flat_locus(atlas, x0, y0, r, z):
-    flat_locus(atlas, 250, 400, 100, 100)
+    # flat_locus(atlas, x0, y0, r, z):
+    flat_locus(atlas, 400, 250, 200, 500)
 
     # bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
-    bounded_quad(atlas, 250, 400, 0, 200, -0.05, 0, 200)
+    # bounded_quad(atlas, 400, 250, 0, 5000, -0.04, 0, 3000)
+
+    # rand_bounded_quad(atlas, zmin, zmax, a, b, c):
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
+    rand_bounded_quad(atlas, 0, 6000, -0.05, 0, 800)
 
     show_tricontour_plot(atlas, name="Basic Deformations")
     plt.close('all')
 
     atlas.calculate_all()
 
-    flow_erosion(atlas, 100)
+    flow_erosion(atlas, 50)
     atlas.calculate_all()
-    flow_erosion(atlas, 100)
+    flow_erosion(atlas, 50)
     atlas.calculate_all()
-    flow_erosion(atlas, 100)
+    flow_erosion(atlas, 50)
+    atlas.calculate_all()
+    flow_erosion(atlas, 50)
+    atlas.calculate_all()
+    flow_erosion(atlas, 50)
+    atlas.calculate_all()
 
     # show final plot
     show_tricontour_plot(atlas, name="Post Erosion, Pre-Smoothing")
@@ -86,7 +100,9 @@ def setup(name, height, width):
 def init_points(atlas, num_points):
 
     # randomly generate a number of points
-    points = [(randrange(0, atlas.width), randrange(0, atlas.height)) for i in range(num_points)]
+    points = [(randrange(0, atlas.width),
+               randrange(0, atlas.height))
+              for i in range(num_points)]
 
     # add bounding points
     points.append([0, 0])
@@ -133,7 +149,7 @@ def rescale_points(atlas):
 
 def init_elevations(atlas):
 
-    atlas.elevs = [0 for i in atlas.points]
+    atlas.elevs = [-50 for i in atlas.points]
 
 
 def init_hydro(atlas):
@@ -142,9 +158,20 @@ def init_hydro(atlas):
     atlas.flows = [0 for x in atlas.points]
 
 
-
 # Terrain deformation functions
 def bounded_quad(atlas, x0, y0, zmin, zmax, a, b, c):
+
+    for i, point in enumerate(atlas.points):
+        n = util.dist_2d(x0, y0, point[0], point[1])
+        dz = a * n**2 + b * n + c
+        dz = max(zmin, dz)
+        dz = min(zmax, dz)
+        atlas.elevs[i] += dz
+
+
+def rand_bounded_quad(atlas, zmin, zmax, a, b, c):
+    x0 = randrange(0, atlas.width)
+    y0 = randrange(0, atlas.height)
 
     for i, point in enumerate(atlas.points):
         n = util.dist_2d(x0, y0, point[0], point[1])
@@ -171,7 +198,7 @@ def simple_smooth(atlas, smooth_factor):
         neighbor_elevs = [atlas.elevs[n] for n in atlas.get_point_neighbors(i)]
         mean = (sum(neighbor_elevs) + elev) / (len(neighbor_elevs) + 1)
 
-        dz = (elev - mean) * smooth_factor
+        dz = (mean - elev) * smooth_factor
         dzs.append(dz)
 
     atlas.elevs = [elev + dzs[i] for i, elev in enumerate(atlas.elevs)]
@@ -182,22 +209,27 @@ def flow_erosion(atlas, erosion_factor):
     mask = get_sea_level_mask(atlas)
     dzs = []
     for i, flow in enumerate(atlas.flows):
-        if (atlas.get_min_neighbor(i) is None):
-            dz = flow * 50
+        dz_neigh = atlas.get_min_neighbor_height(i) - atlas.elevs[i]
+        if (atlas.flow_vs[i] == 0):
+            dz = flow * erosion_factor
+            dz = min(dz, dz_neigh)
         else:
             dz = -(flow * erosion_factor)
+            dz = max(dz, dz_neigh)
+
         dzs.append(dz)
 
-    apply_delta_z_with_mask(atlas, dzs, mask)
+    apply_delta_z_with_mask_bounded(atlas, dzs, mask, 0, 8800)
 
 
 # Utility Functions
 def get_mask(atlas):
     return [True for x in atlas.points]
 
-def get_sea_level_mask(atlas):
-    return [True if atlas.elevs[i] > atlas.sea_level else False for i, point in enumerate(atlas.points)]
 
+def get_sea_level_mask(atlas):
+    return [True if atlas.elevs[i] > atlas.sea_level
+            else False for i, point in enumerate(atlas.points)]
 
 
 def apply_delta_z_with_mask(atlas, dz, mask):
@@ -205,6 +237,16 @@ def apply_delta_z_with_mask(atlas, dz, mask):
     for i, elev in enumerate(atlas.elevs):
         if mask[i]:
             atlas.elevs[i] += dz[i]
+
+
+def apply_delta_z_with_mask_bounded(atlas, dz, mask, z_min, z_max):
+
+    for i, elev in enumerate(atlas.elevs):
+        if mask[i]:
+            new_z = atlas.elevs[i] + dz[i]
+            new_z = min(z_max, new_z)
+            new_z = max(z_min, new_z)
+            atlas.elevs[i] = new_z
 
 
 # Display Functions
@@ -221,7 +263,9 @@ def show_tri_plot(atlas):
 def show_vor_plot(atlas):
 
     field = Field(points=np.array(atlas.points))
-    plot = voronoi_plot_2d(field.voronoi, show_vertices=False, line_colors='orange', line_width=2, line_alpha=0.6, point_size=2)
+    plot = voronoi_plot_2d(field.voronoi, show_vertices=False,
+                           line_colors='orange', line_width=2,
+                           line_alpha=0.6, point_size=2)
     plot.show()
     input("Press enter for next plot")
 
@@ -232,8 +276,26 @@ def show_tricontour_plot(atlas, name="Default Name"):
 
     fig, ax = plt.subplots()
 
-    ax.tricontourf(tri, atlas.elevs)
-    ax.tricontour(tri, atlas.elevs, colors="black", linewidths=0.5)
+    ax.tricontourf(tri, atlas.elevs,
+                   levels=[-3000, -2000, -1000, -500, -100,
+                           0, 100, 500, 1000, 2000, 3000, 4000,
+                           5000, 6000, 7000, 8000, 8500],
+                   colors=["#71abd8ff", "#84b9e3ff", "#a1d2f7ff", "#c6ecffff",
+                           "#d8f2feff", "#acd0a5ff", "#94bf8bff", "#bdcc96ff",
+                           "#d1d7abff", "#efebc0ff", "#ded6a3ff", "#cab982ff",
+                           "#b9985aff", "#ac9a7cff", "#cac3b8ff", "#f5f4f2ff"])
+
+    ax.tricontour(tri, atlas.elevs,
+                  levels=[-3000, -2000, -1000, -500, -100,
+                          0, 100, 500, 1000, 2000, 3000, 4000,
+                          5000, 6000, 7000, 8000, 8500],
+                  linestyles=["solid", "solid", "solid",
+                              "dashed", "solid", "dashdot",
+                              "dashed", "solid", "solid",
+                              "solid", "solid", "solid",
+                              "solid", "solid", "solid",
+                              "dashed"],
+                  colors="black", linewidths=0.5)
 
     ax.triplot(tri, color="0.7", linewidth=0.5, alpha=0.5)
 

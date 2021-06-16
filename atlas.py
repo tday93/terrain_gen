@@ -19,8 +19,8 @@ class Atlas:
         self.height = height
         self.width = width
         self.sea_level = 0
-        self.floor = -1000
-        self.ceiling = 2000
+        self.floor = -3600
+        self.ceiling = 8800
         self.points = []
         self.regions = None
         self.vor = None
@@ -80,6 +80,13 @@ class Atlas:
             return None
         else:
             return min_neigh
+
+    def get_min_neighbor_height(self, point_index):
+        neighbors = self.get_point_neighbors(point_index)
+
+        neigh_elevs = [self.elevs[i] for i in neighbors]
+
+        return neigh_elevs[np.argmin(neigh_elevs)]
 
     def dist_2d(self, idx1, idx2):
         p1 = self.points[idx1]
